@@ -1,0 +1,13 @@
+.history-list  {
+    display: flex;
+    flex-direction: column;
+    width: 100%;
+}
+.history-list li  {
+    font-size: 24px;
+}
+.history-list button  {
+    border: none;
+    background: none;
+    cursor: pointer;
+}
