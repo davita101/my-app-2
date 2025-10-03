@@ -1,8 +1,25 @@
 import { useEffect, useState } from "react";
 import axios from "axios";
 
+export type UnsplashImage = {
+  id: string;
+  urls: {
+    regular: string;
+    full: string;
+    small: string;
+  };
+  alt_description: string | null;
+  likes: number;
+  downloads?: number;
+  views?: number;
+  user: {
+    name: string;
+    username: string;
+  };
+};
+
 type CacheEntry = {
-  images: string[];
+  images: UnsplashImage[];
   timestamp: number;
 };
 
@@ -36,7 +53,7 @@ function persistCache() {
 export default function useSearch(query: string, pageNumber: number) {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(false);
-  const [images, setImages] = useState([]);
+  const [images, setImages] = useState<UnsplashImage[]>([]);
 
   useEffect(() => {
     setImages([]);
@@ -54,27 +71,28 @@ export default function useSearch(query: string, pageNumber: number) {
       return;
     }
 
+    const apiQuery = query || "popular";
     axios({
       method: "GET",
       url: `https://api.unsplash.com/search/photos/`,
       headers: {
         Authorization: `Client-ID ${process.env.REACT_APP_YOUR_ACCESS_KEY}`,
       },
-      params: { query: query, page: pageNumber },
+      params: { query: apiQuery, page: pageNumber, per_page: 20 },
       cancelToken: new axios.CancelToken((c: any) => (cancel = c)),
     })
       .then((res: any) => {
-        const newImages = [
-          ...new Set([
-            ...images,
-            ...res?.data?.results?.map((i: any) => i?.urls?.full),
-          ]),
-        ];
-        setImages(newImages)
+        const results: UnsplashImage[] = res?.data?.results || [];
+        const newImages = [...images, ...results];
+        
+        const uniqueImages = Array.from(
+          new Map(newImages.map(img => [img.id, img])).values()
+        );
+        
+        setImages(uniqueImages);
         setLoading(false);
 
-        // store in cache
-        cache.set(key, { images: newImages, timestamp: Date.now() });
+        cache.set(key, { images: uniqueImages, timestamp: Date.now() });
         persistCache();
       })
       .catch((e) => {

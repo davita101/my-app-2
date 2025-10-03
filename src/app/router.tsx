@@ -1,6 +1,8 @@
 import { useCallback, useEffect, useRef, useState } from "react";
-import logo from "../shared/assets/logo.svg";
-import useSearch from "../shared/hooks/useApi";
+import useSearch, { UnsplashImage } from "../shared/hooks/useApi";
+import { addToSearchHistory } from "../shared/utils/searchHistory";
+import ImageModal from "../shared/components/ImageModal";
+import HistoryPage from "./HistoryPage";
 import "./router.css"
 function App() {
     const [isHome, setIsHome] = useState(true);
@@ -15,35 +17,48 @@ function App() {
     let component;
     switch (path) {
         case "/history":
-            component = <div>search</div>;
+            component = <HistoryPage />;
             break;
     }
 
     const [query, setQuery] = useState("");
     const [pageNumber, setPageNumber] = useState(1);
+    const [selectedImage, setSelectedImage] = useState<UnsplashImage | null>(null);
 
-    const observer = useRef();
+    const observer = useRef<IntersectionObserver | null>(null);
     const { loading, error, images } = useSearch(query, pageNumber);
+    
     const lastImageElementRef = useCallback(
-        (node: any) => {
+        (node: HTMLImageElement | null) => {
             if (loading) return;
             if (observer.current) observer.current.disconnect();
             observer.current = new IntersectionObserver((entries) => {
                 if (entries[0].isIntersecting) {
                     setPageNumber((prevPageNumber) => prevPageNumber + 1);
-                    // console.log('visible');
                 }
             });
             if (node) observer.current.observe(node);
-            // console.log(node);
         },
         [loading]
     );
 
-    function handleSearch(e: any) {
-        setQuery(e.target.value);
+    function handleSearch(e: React.ChangeEvent<HTMLInputElement>) {
+        const newQuery = e.target.value;
+        setQuery(newQuery);
         setPageNumber(1);
+        
+        if (newQuery.trim()) {
+            addToSearchHistory(newQuery.trim());
+        }
     }
+
+    const handleImageClick = (image: UnsplashImage) => {
+        setSelectedImage(image);
+    };
+
+    const handleCloseModal = () => {
+        setSelectedImage(null);
+    };
     return (
         <div className="bg-background text-primary ">
             <header className="nav-container container">
@@ -80,32 +95,33 @@ function App() {
             </header>
             <div className="container">{component}</div>
 
-            <div className="container grid-container">
-                {/* bg-blur */}
-                <div className="bg-blur" />
-                {images.map((image, index) => {
-                    return (
-                        <div key={image} className="img-container">
-                            <img ref={lastImageElementRef} src={image} alt={image} />
-                        </div>
-                    )
-                })}
-                <div>{loading && "Loading..."}</div>
-                <div>{error && "Error..."}</div>
+            {isHome && (
+                <div className="container grid-container">
+                    <div className="bg-blur" />
+                    {images.map((image, index) => {
+                        const isLast = index === images.length - 1;
+                        return (
+                            <div 
+                                key={image.id} 
+                                className="img-container"
+                                onClick={() => handleImageClick(image)}
+                            >
+                                <img
+                                    ref={isLast ? lastImageElementRef : null}
+                                    src={image.urls.small}
+                                    alt={image.alt_description || "Image"}
+                                />
+                            </div>
+                        );
+                    })}
+                    <div>{loading && "იტვირთება..."}</div>
+                    <div>{error && "შეცდომა..."}</div>
+                </div>
+            )}
 
-                {/* <div>
-          <img src="" alt="" />
-          <p>image 1</p>
-        </div>
-        <div>
-          <img src="" alt="" />
-          <p>image 2</p>
-        </div>
-        <div>
-          <img src="" alt="" />
-          <p>image 3</p>
-        </div> */}
-            </div>
+            {selectedImage && (
+                <ImageModal image={selectedImage} onClose={handleCloseModal} />
+            )}
         </div>
     );
 }
