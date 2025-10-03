@@ -86,7 +86,11 @@ function App() {
                 {images.map((image, index) => {
                     return (
                         <div key={image} className="img-container">
-                            <img ref={lastImageElementRef} src={image} alt={image} />
+                            <img 
+                                ref={index === images.length - 1 ? lastImageElementRef : null} 
+                                src={image} 
+                                alt={image} 
+                            />
                         </div>
                     )
                 })}
