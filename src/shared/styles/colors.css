@@ -1,0 +1,70 @@
+/* CUSTOM COLORS */
+:root {
+    /* background */
+    --background-0: hsl(205, 87%, 94%);
+
+    /* primary */
+    --primary: hsl(207, 90%, 61%);
+
+    /* secondary */
+    --secondary: hsl(46, 74%, 92%);
+
+    --black: hsl(0, 0%, 4%);
+
+    --white: hsl(0, 0%, 100%);
+}
+
+/* ### DARK MODE */
+.dark {
+    /* background */
+    --background-0: hsl(202, 13%, 34%);
+
+    /* primary */
+    --primary: hsl(207, 90%, 61%);
+
+    /* secondary */
+    --secondary: hsl(46, 74%, 92%);
+
+    /* white */
+    --white: hsl(0, 0%, 4%);
+
+    /* black */
+    --black: hsl(0, 0%, 100%);
+}
+
+/* ##### TEXT COLORS START ###### */
+
+.text-primary {
+    color: var(--primary);
+}
+
+.text-black {
+    color: var(--black);
+}
+
+.text-white {
+    color: var(--white);
+}
+
+.text-secondary {
+    color: var(--secondary);
+}
+
+/* ##### TEXT COLORS END ###### */
+
+/* ##### BACKGROUND  START ###### */
+
+.bg-background {
+    background: var(--background-0);
+}
+
+.bg-black {
+    background-color: var(--black);
+}
+
+.bg-white {
+    background-color: var(--white);
+}
+
+
+/* ##### BACKGROUND  END ###### */
