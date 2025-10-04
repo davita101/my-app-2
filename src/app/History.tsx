@@ -1,11 +1,12 @@
 import React, { useCallback, useEffect, useState } from "react";
-import { getHistory, clearHistory, removeHistoryItem } from "../shared/history";
+import { getHistory, clearHistory, removeHistoryItem } from "../shared/types/history";
 import useUnsplash from "../shared/hooks/useUnsplash";
 import useInfiniteScroll from "../shared/hooks/useInfiniteScroll";
 import ImageGrid from "../shared/components/ImageGrid";
 import ImageModal from "../shared/components/ImageModal";
-import { UnsplashPhoto } from "../shared/types";
-import "./history.css"
+import { UnsplashPhoto } from "../shared/types/types";
+import "./History.css"
+
 export default function History() {
     const [history, setHistory] = useState<string[]>([]);
     const [selectedTerm, setSelectedTerm] = useState<string | null>(null);

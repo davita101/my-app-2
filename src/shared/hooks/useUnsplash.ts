@@ -1,6 +1,5 @@
 import { useEffect, useRef, useState } from "react";
-import axios from "axios";
-import { UnsplashPhoto } from "../types";
+import { UnsplashPhoto } from "../types/types";
 
 type CacheEntry = { photos: UnsplashPhoto[]; ts: number };
 
@@ -24,7 +23,7 @@ function persistCache() {
     const obj: Record<string, CacheEntry> = {};
     cache.forEach((v, k) => (obj[k] = v));
     sessionStorage.setItem(STORAGE_KEY, JSON.stringify(obj));
-  } catch (e) {}
+  } catch (e) { }
 }
 
 export default function useUnsplash(
@@ -37,7 +36,7 @@ export default function useUnsplash(
   const [photos, setPhotos] = useState<UnsplashPhoto[]>([]);
   const [hasMore, setHasMore] = useState(true);
 
-  const cancelRef = useRef<any>(null);
+  const cancelRef = useRef<AbortController | null>(null);
 
   useEffect(() => {
     setPhotos([]);
@@ -59,26 +58,37 @@ export default function useUnsplash(
 
     setLoading(true);
     setError(null);
-    if (cancelRef.current) cancelRef.current.cancel();
-    cancelRef.current = axios.CancelToken.source();
+    // abort previous request if any
+    if (cancelRef.current) cancelRef.current.abort();
+    const controller = new AbortController();
+    cancelRef.current = controller;
 
-    const per_page = 20;
-    const url =
-      mode === "popular"
-        ? `https://api.unsplash.com/photos`
-        : `https://api.unsplash.com/search/photos`;
+    (async () => {
+      const per_page = 20;
+      const url =
+        mode === "popular"
+          ? `https://api.unsplash.com/photos`
+          : `https://api.unsplash.com/search/photos`;
 
-    axios
-      .get(url, {
-        headers: { Authorization: `Client-ID ${process.env.REACT_APP_YOUR_ACCESS_KEY}` },
-        params:
-          mode === "popular"
-            ? { page, per_page, order_by: "popular" }
-            : { query, page, per_page },
-        cancelToken: cancelRef.current.token,
-      })
-      .then((res) => {
-        const results: UnsplashPhoto[] = mode === "popular" ? res.data : res.data.results ?? [];
+      const paramsObj: Record<string, any> =
+        mode === "popular"
+          ? { page, per_page, order_by: " " }
+          : { query, page, per_page };
+      const search = new URLSearchParams();
+      Object.entries(paramsObj).forEach(([k, v]) => {
+        if (v !== undefined && v !== null) search.append(k, String(v));
+      });
+
+      const fetchUrl = `${url}?${search.toString()}`;
+      try {
+        const res = await fetch(fetchUrl, {
+          headers: { Authorization: `Client-ID ${process.env.REACT_APP_YOUR_ACCESS_KEY}` },
+          signal: controller.signal,
+        });
+        if (!res.ok) throw new Error(`Unsplash API error ${res.status}`);
+        const data = await res.json();
+        const results: UnsplashPhoto[] = mode === "popular" ? data : data.results ?? [];
+
         setPhotos((prev) => {
           const merged = [...prev, ...results];
           const map = new Map(merged.map((p) => [p.id, p]));
@@ -89,15 +99,16 @@ export default function useUnsplash(
         persistCache();
 
         setHasMore(results.length >= per_page);
-      })
-      .catch((err) => {
-        if (axios.isCancel(err)) return;
-        setError(err.message ?? "Error");
-      })
-      .finally(() => setLoading(false));
+      } catch (err: any) {
+        if (err && err.name === "AbortError") return;
+        setError(err?.message ?? "Error");
+      } finally {
+        setLoading(false);
+      }
+    })();
 
     return () => {
-      if (cancelRef.current) cancelRef.current.cancel();
+      if (cancelRef.current) cancelRef.current.abort();
     };
   }, [query, page, mode]);
 

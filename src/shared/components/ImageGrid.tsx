@@ -1,5 +1,4 @@
-import React from "react";
-import { UnsplashPhoto } from "../types";
+import { UnsplashPhoto } from "../types/types";
 
 type Props = {
   photos: UnsplashPhoto[];

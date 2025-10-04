@@ -4,8 +4,8 @@ import useDebounce from "../shared/hooks/useDebounce";
 import useInfiniteScroll from "../shared/hooks/useInfiniteScroll";
 import ImageGrid from "../shared/components/ImageGrid";
 import ImageModal from "../shared/components/ImageModal";
-import { UnsplashPhoto } from "../shared/types";
-import { pushHistory } from "../shared/history";
+import { UnsplashPhoto } from "../shared/types/types";
+import { pushHistory } from "../shared/types/history";
 
 export default function Home() {
   const [query, setQuery] = useState("");
@@ -25,11 +25,16 @@ export default function Home() {
   }, [debounced]);
 
   useEffect(() => {
-    if (debounced.trim()) pushHistory(debounced.trim());
+    if (debounced.trim()) {
+      pushHistory(debounced.trim());
+
+    }
   }, [debounced]);
 
   const loadMore = useCallback(() => {
-    if (!loading && hasMore) setPage((p) => p + 1);
+    if (!loading && hasMore) {
+      setPage((p) => p + 1)
+    };
   }, [loading, hasMore]);
 
   const setLastNode = useInfiniteScroll(loadMore, !loading && hasMore);

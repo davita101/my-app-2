@@ -1,7 +1,6 @@
-import React, { useEffect, useState } from "react";
-import { UnsplashPhoto } from "../types";
-import axios from "axios";
+import { useEffect, useState } from "react";
 import "./ImageModal.css"
+import { UnsplashPhoto } from "../types/types";
 type Props = { photo: UnsplashPhoto | null; onClose: () => void };
 
 export default function ImageModal({ photo, onClose }: Props) {
@@ -11,17 +10,28 @@ export default function ImageModal({ photo, onClose }: Props) {
     useEffect(() => {
         if (!photo) return;
         setLoading(true);
-        axios
-            .get(`https://api.unsplash.com/photos/${photo.id}`, {
-                headers: { Authorization: `Client-ID ${process.env.REACT_APP_YOUR_ACCESS_KEY}` },
-            })
-            .then((res) => setStats(res.data))
-            .catch(() => setStats(null))
-            .finally(() => setLoading(false));
+        const controller = new AbortController();
+        (async () => {
+            try {
+                const res = await fetch(`https://api.unsplash.com/photos/${photo.id}`, {
+                    headers: { Authorization: `Client-ID ${process.env.REACT_APP_YOUR_ACCESS_KEY}` },
+                    signal: controller.signal,
+                });
+                if (!res.ok) throw new Error(`Unsplash API error ${res.status}`);
+                const data = await res.json();
+                setStats(data);
+            } catch (e: any) {
+                if (e && e.name === "AbortError") return;
+                setStats(null);
+            } finally {
+                setLoading(false);
+            }
+        })();
+
+        return () => controller.abort();
     }, [photo]);
 
     if (!photo) return null;
-console.log(stats)
     return (
         <>
             {/* background */}

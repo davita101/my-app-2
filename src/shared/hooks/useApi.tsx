@@ -1,12 +1,11 @@
 import { useEffect, useState } from "react";
-import axios from "axios";
 
 type CacheEntry = {
   images: string[];
   timestamp: number;
 };
 
-// In-memory cache shared across hook instances
+// In-memory cache shared
 const cache = new Map<string, CacheEntry>();
 const STORAGE_KEY = "useSearchCache:v1";
 const TTL = 1000 * 60 * 5; // 5 minutes
@@ -36,7 +35,7 @@ function persistCache() {
 export default function useSearch(query: string, pageNumber: number) {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(false);
-  const [images, setImages] = useState([]);
+  const [images, setImages] = useState<string[]>([]);
 
   useEffect(() => {
     setImages([]);
@@ -44,7 +43,7 @@ export default function useSearch(query: string, pageNumber: number) {
 
   useEffect(() => {
     setLoading(true);
-    let cancel: any;
+    let controller: AbortController | null = null;
     const key = `${query}::${pageNumber}`;
     // if cached and fresh, use it and skip network
     const cached = cache.get(key);
@@ -53,35 +52,47 @@ export default function useSearch(query: string, pageNumber: number) {
       setLoading(false);
       return;
     }
+    controller = new AbortController();
 
-    axios({
-      method: "GET",
-      url: `https://api.unsplash.com/search/photos/`,
-      headers: {
-        Authorization: `Client-ID ${process.env.REACT_APP_YOUR_ACCESS_KEY}`,
-      },
-      params: { query: query, page: pageNumber },
-      cancelToken: new axios.CancelToken((c: any) => (cancel = c)),
-    })
-      .then((res: any) => {
-        const newImages = [
-          ...new Set([
-            ...images,
-            ...res?.data?.results?.map((i: any) => i?.urls?.full),
-          ]),
-        ];
-        setImages(newImages)
+    (async () => {
+      try {
+        const per_page = 20;
+        const params = new URLSearchParams();
+        if (query !== undefined && query !== null) params.append("query", String(query));
+        params.append("page", String(pageNumber));
+        params.append("per_page", String(per_page));
+
+        const url = `https://api.unsplash.com/search/photos/?${params.toString()}`;
+        const res = await fetch(url, {
+          headers: {
+            Authorization: `Client-ID ${process.env.REACT_APP_YOUR_ACCESS_KEY}`,
+          },
+          signal: controller!.signal,
+        });
+
+        if (!res.ok) throw new Error(`Unsplash API error ${res.status}`);
+
+        const data = await res.json();
+        const results = data?.results?.map((i: any) => i?.urls?.full) ?? [];
+
+        setImages((prev) => {
+          const merged = [...prev, ...results];
+          return Array.from(new Set(merged));
+        });
         setLoading(false);
 
-        // store in cache
-        cache.set(key, { images: newImages, timestamp: Date.now() });
+        // store in cache (store page results)
+        cache.set(key, { images: results, timestamp: Date.now() });
         persistCache();
-      })
-      .catch((e) => {
-        if (axios.isCancel(e)) return;
+      } catch (e: any) {
+        if (e && e.name === "AbortError") return;
         setError(true);
-      });
-    return () => cancel();
+      }
+    })();
+
+    return () => {
+      if (controller) controller.abort();
+    };
   }, [query, pageNumber]);
   return { loading, error, images };
 }

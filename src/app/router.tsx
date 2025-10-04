@@ -1,13 +1,14 @@
-import React from "react";
-import "./router.css";
+import "./Router.css";
 import Home from "./Home";
 import History from "./History";
 
 function App() {
   const path = window.location.pathname;
 
+  // switch case
   let component = null;
-  if (path === "/history") component = <History />;
+  if (path === "/history")
+     component = <History />;
   else component = <Home />;
 
   return (
